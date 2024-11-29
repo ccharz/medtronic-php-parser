@@ -1,0 +1,44 @@
+{
+    "name": "ccharz/medtronic-php-parser",
+    "description": "A PHP Medtronic Carelink Data Parser",
+    "keywords": [
+        "nightscout",
+        "medtronic",
+        "carelink"
+    ],
+    "type": "library",
+    "require": {
+        "php": "^8.3",
+        "smalot/pdfparser": "^2.8"
+    },
+    "require-dev": {
+        "laravel/pint": "^1.14",
+        "phpunit/phpunit": "^11.0",
+        "spatie/phpunit-snapshot-assertions": "^5.1"
+    },
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Ccharz\\MedtronicParser\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Ccharz\\MedtronicParser\\Tests\\": "tests/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Christian Charzewski",
+            "email": "chris@charzewski.at",
+            "role": "Developer"
+        }
+    ],
+    "scripts": {
+        "test": "vendor/bin/phpunit",
+        "test-coverage": "vendor/bin/phpunit --coverage-html coverage"
+    },
+    "config": {
+        "sort-packages": true
+    }
+}

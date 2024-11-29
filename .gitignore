@@ -1,0 +1,12 @@
+/vendor/
+/.vscode
+/.vagrant
+.phpunit.result.cache
+.phpunit.cache
+
+/coverage/
+composer.lock
+tests/__snapshots__/*
+tests/samples/exports/*
+tests/samples/profiles/*
+.DS_Store
