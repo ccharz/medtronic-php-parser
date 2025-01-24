@@ -9,9 +9,7 @@ use SplFileObject;
 
 class CsvParser
 {
-    public function __construct(protected readonly string $filepath, protected readonly string $timezone)
-    {
-    }
+    public function __construct(protected readonly string $filepath, protected readonly string $timezone) {}
 
     public function parse(Closure $callback): void
     {
@@ -28,6 +26,8 @@ class CsvParser
             'BWZ Estimate (U)' => true,
             'BWZ Carb Ratio (U/Ex)' => true,
             'BWZ Carb Input (exchanges)' => true,
+            'BWZ Carb Input (grams)' => true,
+            'BWZ Carb Ratio (g/U)' => true,
             'BWZ Correction Estimate (U)' => true,
             'BWZ Food Estimate (U)' => true,
             'BWZ Active Insulin (U)' => true,
@@ -99,7 +99,7 @@ class CsvParser
                     continue;
                 }
 
-                $values['datetime'] = new DateTime($values['Date'].' '.$values['Time'], new DateTimeZone($this->timezone));
+                $values['datetime'] = new DateTime($values['Date'] . ' ' . $values['Time'], new DateTimeZone($this->timezone));
 
                 unset($values['Date']);
                 unset($values['Time']);
