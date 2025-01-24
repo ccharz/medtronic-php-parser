@@ -11,7 +11,7 @@ With this library you can parse data from export files available in the medtroni
 Use [Composer](https://getcomposer.org) to install this library into your project:
 
 ```bash
-composer require --dev "ccharz/medtronic-php-parser:^0.0.1"
+composer require "ccharz/medtronic-php-parser"
 ```
 
 ## Basal Rates, Carb Ratio factors, Target Blood Sugar and Correction Factors
