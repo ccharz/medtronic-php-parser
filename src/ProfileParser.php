@@ -15,6 +15,7 @@ class ProfileParser
 
     protected array $locales_in_index = [
         'de' => [
+            'header' => 'Geräteeinstellungen (1 von ',
             'basal_rates' => 'I.E./h;Zeit',
             'correction_factor' => 'K-Faktor;Zeit',
             'target_blood_sugar' => ';Hoch',
@@ -45,9 +46,26 @@ class ProfileParser
 
     protected function parseFile(string $file): void
     {
+        $this->index = [];
+        $this->content = [];
+
         $parser = new \Smalot\PdfParser\Parser;
         $pdf = $parser->parseFile($file);
-        $data = $pdf->getPages()[1]->getDataTm();
+        $pages = $pdf->getPages();
+
+        $page = -1;
+
+        foreach ($pages as $page_index => $currentPage) {
+            if (str_contains($currentPage->getText(), $this->locales_in_index[$this->locale]['header'])) {
+                $page = $page_index;
+            }
+        }
+
+        if ($page === -1) {
+            return;
+        }
+
+        $data = $pages[$page]->getDataTm();
 
         $this->index = [];
         $this->content = [];
@@ -66,7 +84,8 @@ class ProfileParser
             $text = $object[1];
 
             if (! in_array($text, ['<>', '--']) && ! is_numeric($text)) {
-                $line = $data[$object_index][1].';'.$data[$object_index + 1][1];
+                $line = $data[$object_index][1] . ';' . $data[$object_index + 1][1];
+
                 if (isset($phrases[$line])) {
                     $this->index[$phrases[$line]][] = $object_index;
                 } elseif ($complex !== []) {
@@ -101,19 +120,15 @@ class ProfileParser
 
     private function getIndex(string $type): array
     {
-        if (! isset($this->index[$type])) {
-            throw new Exception($this->locales_in_index[$type].' not found');
-        }
-
-        return $this->index[$type];
+        return $this->index[$type] ?? [];
     }
 
     protected function getBasalRates(): array
     {
         $basal_rates = [];
         $basal_rate_indexes = array_reverse($this->getIndex('basal_rates'));
-        foreach ($basal_rate_indexes as $basal_rate_index => $content_index) {
 
+        foreach ($basal_rate_indexes as $basal_rate_index => $content_index) {
             $lines = $this->parseTable($content_index - 2, 29, 3);
 
             foreach ($lines as $line) {
@@ -125,7 +140,13 @@ class ProfileParser
                     continue;
                 }
 
-                $basal_rates[$basal_rate_index][$this->toTime($line[0])] = $this->toFloat($line[1]);
+                if ($line[0] === '--' && $line[1] === '<>' && $line[2] === '<>') {
+                    continue;
+                }
+
+                if (is_numeric($line[1][0])) {
+                    $basal_rates[$basal_rate_index][$this->toTime($line[0])] = $this->toFloat($line[1]);
+                }
             }
         }
 
@@ -134,6 +155,10 @@ class ProfileParser
 
     protected function getCorrectionFactor(): array
     {
+        if ($this->getIndex('correction_factor') === []) {
+            return [];
+        }
+
         $correction_factor_index = $this->getIndex('correction_factor')[0];
 
         $lines = $this->parseTable($correction_factor_index - 2, 8, 3);
@@ -162,6 +187,10 @@ class ProfileParser
                 break;
             }
 
+            if (array_filter($line) === []) {
+                continue;
+            }
+
             $target_blood_sugar[$this->toTime($line[0])] = [
                 $this->toFloat($line[1]),
                 $this->toFloat($line[2]),
@@ -173,6 +202,10 @@ class ProfileParser
 
     protected function getCarbRatioFactor(): array
     {
+        if ($this->getIndex('carb_ratio_factor') === []) {
+            return [];
+        }
+
         $carb_ratio_factor_index = $this->getIndex('carb_ratio_factor')[0] - 2;
 
         $lines = $this->parseTable($carb_ratio_factor_index, 8, 3);
@@ -190,8 +223,12 @@ class ProfileParser
         return $carb_ratio_factor;
     }
 
-    protected function getMinutesOfInsulinAction(): int
+    protected function getMinutesOfInsulinAction(): ?int
     {
+        if ($this->getIndex('insulin_action_in_minutes') === []) {
+            return null;
+        }
+
         $insulin_action_index = $this->getIndex('insulin_action_in_minutes')[0];
 
         $line = $this->parseTable($insulin_action_index, 1, 2)[0];
