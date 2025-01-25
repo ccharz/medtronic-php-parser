@@ -2,6 +2,11 @@
 
 namespace Ccharz\MedtronicParser;
 
+use DateTimeImmutable;
+use DateTimeInterface;
+use DateTimeZone;
+use Exception;
+
 class ProfileParser
 {
     protected array $index;
@@ -15,12 +20,11 @@ class ProfileParser
             'target_blood_sugar' => ';Hoch',
             'carb_ratio_factor' => 'Verhältnis;Zeit',
             'insulin_action_in_minutes' => 'Wirkdauer aktiv. Insul.;(h:mm)',
+            'date' => ['Generiert: '],
         ],
     ];
 
-    public function __construct(protected readonly string $filepath, protected readonly string $locale)
-    {
-    }
+    public function __construct(protected readonly string $filepath, protected readonly string $locale, protected readonly string $timezone) {}
 
     protected function parseTable(int $start, int $lines, int $columns = 3): array
     {
@@ -41,21 +45,38 @@ class ProfileParser
 
     protected function parseFile(string $file): void
     {
-        $parser = new \Smalot\PdfParser\Parser();
+        $parser = new \Smalot\PdfParser\Parser;
         $pdf = $parser->parseFile($file);
         $data = $pdf->getPages()[1]->getDataTm();
 
         $this->index = [];
         $this->content = [];
 
+        $phrases = [];
+        $complex = [];
+        foreach ($this->locales_in_index[$this->locale] as $key => $phrase) {
+            if (is_array($phrase)) {
+                $complex[$key] = $phrase;
+            } else {
+                $phrases[$phrase] = $key;
+            }
+        }
+
         foreach ($data as $object_index => $object) {
             $text = $object[1];
 
             if (! in_array($text, ['<>', '--']) && ! is_numeric($text)) {
-                $this->index[
-                    $data[$object_index][1].';'
-                    .$data[$object_index + 1][1]
-                ][] = $object_index;
+                $line = $data[$object_index][1].';'.$data[$object_index + 1][1];
+                if (isset($phrases[$line])) {
+                    $this->index[$phrases[$line]][] = $object_index;
+                } elseif ($complex !== []) {
+                    foreach ($complex as $key => $phrase) {
+                        if (isset($phrase[0]) && is_string($phrase[0]) && str_starts_with($line, $phrase[0])) {
+                            $this->index[$key][] = $object_index;
+                            break;
+                        }
+                    }
+                }
             }
 
             $this->content[$object_index] = $text;
@@ -80,9 +101,11 @@ class ProfileParser
 
     private function getIndex(string $type): array
     {
-        return $this->index[
-            $this->locales_in_index[$this->locale][$type]
-        ];
+        if (! isset($this->index[$type])) {
+            throw new Exception($this->locales_in_index[$type].' not found');
+        }
+
+        return $this->index[$type];
     }
 
     protected function getBasalRates(): array
@@ -140,7 +163,9 @@ class ProfileParser
             }
 
             $target_blood_sugar[$this->toTime($line[0])] = [
-                $this->toFloat($line[1]), $this->toFloat($line[2])];
+                $this->toFloat($line[1]),
+                $this->toFloat($line[2]),
+            ];
         }
 
         return $target_blood_sugar;
@@ -181,11 +206,29 @@ class ProfileParser
         return $minutes;
     }
 
+    protected function getDate(): ?DateTimeInterface
+    {
+        $date_index = $this->getIndex('date')[0];
+
+        $line = $this->parseTable($date_index, 1, 1)[0];
+
+        if (isset($line[0])) {
+            return DateTimeImmutable::createFromFormat(
+                'd.m.Y, H:i',
+                mb_substr($line[0], mb_strlen($this->locales_in_index[$this->locale]['date'][0])),
+                new DateTimeZone($this->timezone)
+            );
+        }
+
+        return null;
+    }
+
     public function parse(): array
     {
         $this->parseFile($this->filepath);
 
         return [
+            'created_at' => $this->getDate(),
             'basal_rates' => $this->getBasalRates(),
             'correction_factor' => $this->getCorrectionFactor(),
             'target_blood_sugar' => $this->getTargetBloodSugar(),

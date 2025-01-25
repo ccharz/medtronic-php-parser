@@ -99,7 +99,7 @@ class CsvParser
                     continue;
                 }
 
-                $values['datetime'] = new DateTime($values['Date'] . ' ' . $values['Time'], new DateTimeZone($this->timezone));
+                $values['datetime'] = new DateTime($values['Date'].' '.$values['Time'], new DateTimeZone($this->timezone));
 
                 unset($values['Date']);
                 unset($values['Time']);

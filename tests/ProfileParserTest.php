@@ -26,7 +26,7 @@ class ProfileParserTest extends TestCase
     #[DataProvider('basicParsingProvider')]
     public function test_basic_parsing(string $filepath): void
     {
-        $importer = new ProfileParser($filepath, 'de');
+        $importer = new ProfileParser($filepath, 'de', 'Europe/Vienna');
 
         $result = $importer->parse();
 

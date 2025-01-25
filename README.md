@@ -25,7 +25,7 @@ use Ccharz\MedtronicParser\ProfileParser;
 
 $filepath = 'path/to/your/medtronic-profile.pdf';
 
-$result = (new ProfileParser($filepath, 'de'))->parse();
+$result = (new ProfileParser($filepath, 'de', 'Europe/Vienna'))->parse();
 
 var_dump($result);
 ```
